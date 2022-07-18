@@ -9,22 +9,22 @@
 package org.telegram.messenger;
 
 public class VideoEditedInfo {
-
-    public long startTime;
-    public long endTime;
-    public long avatarStartTime = -1;
-    public int rotationValue;
     public int originalWidth;
     public int originalHeight;
     public int originalBitrate;
-    public int resultWidth;
-    public int resultHeight;
-    public int bitrate;
-    public int framerate = 24;
+    public long originalDuration;
+    public long startTime;
+    public long endTime;
     public String originalPath;
     public String attachPath;
+    public int resultWidth;
+    public int resultHeight;
+
+    public long avatarStartTime = -1;
+    public int rotationValue;
+    public int bitrate;
+    public int framerate = 24;
     public boolean roundVideo;
-    public long originalDuration;
     public MediaController.CropState cropState;
 
     public int id = Integer.MAX_VALUE;

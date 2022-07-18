@@ -16,6 +16,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.media.MediaMetadataRetriever;
 import android.os.Handler;
 import android.util.Log;
 
@@ -163,6 +164,58 @@ public class MediaController {
                 }
             }
         }
+    }
+
+    public static int getVideoBitrate(String path) {
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        int bitrate = 0;
+        try {
+            retriever.setDataSource(path);
+            bitrate = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
+        } catch (Exception e) {
+            Log.e(TAG, e.getLocalizedMessage());
+            e.printStackTrace();
+        }
+
+        retriever.release();
+        return bitrate;
+    }
+
+    public static int makeVideoBitrate(int originalHeight, int originalWidth, int originalBitrate, int height, int width) {
+        float compressFactor;
+        float minCompressFactor;
+        int maxBitrate;
+        if (Math.min(height, width) >= 1080) {
+            maxBitrate = 6800_000;
+            compressFactor = 1f;
+            minCompressFactor = 1f;
+        } else if (Math.min(height, width) >= 720) {
+            maxBitrate = 2600_000;
+            compressFactor = 1f;
+            minCompressFactor = 1f;
+        } else if (Math.min(height, width) >= 480) {
+            maxBitrate = 1000_000;
+            compressFactor = 0.75f;
+            minCompressFactor = 0.9f;
+        } else {
+            maxBitrate = 750_000;
+            compressFactor = 0.6f;
+            minCompressFactor = 0.7f;
+        }
+        int remeasuredBitrate = (int) (originalBitrate / (Math.min(originalHeight / (float) (height), originalWidth / (float) (width))));
+        remeasuredBitrate *= compressFactor;
+        int minBitrate = (int) (getVideoBitrateWithFactor(minCompressFactor) / (1280f * 720f / (width * height)));
+        if (originalBitrate < minBitrate) {
+            return remeasuredBitrate;
+        }
+        if (remeasuredBitrate > maxBitrate) {
+            return maxBitrate;
+        }
+        return Math.max(remeasuredBitrate, minBitrate);
+    }
+
+    private static int getVideoBitrateWithFactor(float f) {
+        return (int) (f * 2000f * 1000f * 1.13f);
     }
 
     private boolean startVideoConvertFromQueue() {
