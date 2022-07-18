@@ -9,7 +9,6 @@
 package org.telegram.messenger.video;
 
 import android.annotation.SuppressLint;
-import android.graphics.Canvas;
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
@@ -17,22 +16,20 @@ import android.opengl.Matrix;
 import android.util.Log;
 
 import org.telegram.messenger.MediaController;
-import org.telegram.messenger.VideoEditedInfo;
 import org.telegram.ui.Components.FilterShaders;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.ArrayList;
 
 import chengdu.ws.telegram.BuildConfig;
 
 public class TextureRenderer {
     private static final String TAG = TextureRenderer.class.getSimpleName();
 
-    private FloatBuffer verticesBuffer;
+    private final FloatBuffer verticesBuffer;
     private FloatBuffer textureBuffer;
-    private FloatBuffer renderTextureBuffer;
+    private final FloatBuffer renderTextureBuffer;
     private FloatBuffer bitmapVerticesBuffer;
 
     float[] bitmapData = {
@@ -73,15 +70,15 @@ public class TextureRenderer {
             "  gl_FragColor = texture2D(sTexture, vTextureCoord);\n" +
             "}\n";
 
-    private float[] mMVPMatrix = new float[16];
-    private float[] mSTMatrix = new float[16];
+    private final float[] mMVPMatrix = new float[16];
+    private final float[] mSTMatrix = new float[16];
     private float[] mSTMatrixIdentity = new float[16];
     private int mTextureID;
-    private int[] mProgram;
-    private int[] muMVPMatrixHandle;
-    private int[] muSTMatrixHandle;
-    private int[] maPositionHandle;
-    private int[] maTextureHandle;
+    private final int[] mProgram;
+    private final int[] muMVPMatrixHandle;
+    private final int[] muSTMatrixHandle;
+    private final int[] maPositionHandle;
+    private final int[] maTextureHandle;
 
     private boolean blendEnabled;
 
@@ -212,8 +209,8 @@ public class TextureRenderer {
         st.getTransformMatrix(mSTMatrix);
         if (BuildConfig.DEBUG && firstFrame) {
             StringBuilder builder = new StringBuilder();
-            for (int a = 0; a < mSTMatrix.length; a++) {
-                builder.append(mSTMatrix[a]).append(", ");
+            for (float stMatrix : mSTMatrix) {
+                builder.append(stMatrix).append(", ");
             }
             Log.d(TAG, "stMatrix = " + builder);
             firstFrame = false;
@@ -227,7 +224,6 @@ public class TextureRenderer {
         int texture = mTextureID;
         int index = 0;
         int target = GLES11Ext.GL_TEXTURE_EXTERNAL_OES;
-        float[] stMatrix = mSTMatrix;
 
         GLES20.glUseProgram(mProgram[index]);
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
@@ -238,7 +234,7 @@ public class TextureRenderer {
         GLES20.glVertexAttribPointer(maTextureHandle[index], 2, GLES20.GL_FLOAT, false, 8, renderTextureBuffer);
         GLES20.glEnableVertexAttribArray(maTextureHandle[index]);
 
-        GLES20.glUniformMatrix4fv(muSTMatrixHandle[index], 1, false, stMatrix, 0);
+        GLES20.glUniformMatrix4fv(muSTMatrixHandle[index], 1, false, mSTMatrix, 0);
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle[index], 1, false, mMVPMatrix, 0);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
         GLES20.glFinish();

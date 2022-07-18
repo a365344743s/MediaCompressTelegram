@@ -12,9 +12,6 @@ import android.graphics.SurfaceTexture;
 import android.view.Surface;
 
 import org.telegram.messenger.MediaController;
-import org.telegram.messenger.VideoEditedInfo;
-
-import java.util.ArrayList;
 
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;

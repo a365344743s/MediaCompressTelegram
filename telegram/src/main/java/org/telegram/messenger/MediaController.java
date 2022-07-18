@@ -9,18 +9,17 @@
 package org.telegram.messenger;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.content.Intent;
-import android.content.SharedPreferences;
+import android.app.Application;
+import android.content.Context;
 import android.graphics.Matrix;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.os.Handler;
 import android.util.Log;
 
 import org.telegram.messenger.video.MediaCodecVideoConvertor;
-import org.telegram.ui.Components.PhotoFilterView;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -29,29 +28,6 @@ import chengdu.ws.telegram.BuildConfig;
 
 public class MediaController {
     private static final String TAG = MediaController.class.getSimpleName();
-
-    public static class SavedFilterState {
-        public float enhanceValue;
-        public float softenSkinValue;
-        public float exposureValue;
-        public float contrastValue;
-        public float warmthValue;
-        public float saturationValue;
-        public float fadeValue;
-        public int tintShadowsColor;
-        public int tintHighlightsColor;
-        public float highlightsValue;
-        public float shadowsValue;
-        public float vignetteValue;
-        public float grainValue;
-        public int blurType;
-        public float sharpenValue;
-        public PhotoFilterView.CurvesToolValue curvesToolValue = new PhotoFilterView.CurvesToolValue();
-        public float blurExcludeSize;
-        public org.telegram.ui.Components.Point blurExcludePoint;
-        public float blurExcludeBlurSize;
-        public float blurAngle;
-    }
 
     public static class CropState {
         public float cropPx;
@@ -109,13 +85,9 @@ public class MediaController {
     private final Object videoConvertSync = new Object();
 
     private static class VideoConvertMessage {
-        public MessageObject messageObject;
         public VideoEditedInfo videoEditedInfo;
-        public int currentAccount;
 
-        public VideoConvertMessage(MessageObject object, VideoEditedInfo info) {
-            messageObject = object;
-            currentAccount = messageObject.currentAccount;
+        public VideoConvertMessage(VideoEditedInfo info) {
             videoEditedInfo = info;
         }
     }
@@ -140,38 +112,45 @@ public class MediaController {
     public MediaController() {
     }
 
+    public void init(Application application) {
+        AndroidUtilities.init(application);
+    }
+
     public void cleanup() {
         videoConvertQueue.clear();
         cancelVideoConvert(null);
     }
 
-    public void scheduleVideoConvert(MessageObject messageObject) {
-        scheduleVideoConvert(messageObject, false);
+    private int mNextConvertId = Integer.MIN_VALUE;
+    public void scheduleVideoConvert(VideoEditedInfo info) {
+        scheduleVideoConvert(info, false);
     }
 
-    public boolean scheduleVideoConvert(MessageObject messageObject, boolean isEmpty) {
-        if (messageObject == null || messageObject.videoEditedInfo == null) {
+    public boolean scheduleVideoConvert(VideoEditedInfo info, boolean isEmpty) {
+        if (info == null) {
             return false;
         }
         if (isEmpty && !videoConvertQueue.isEmpty()) {
             return false;
         } else if (isEmpty) {
-            new File(messageObject.messageOwner.attachPath).delete();
+            new File(info.attachPath).delete();
         }
-        videoConvertQueue.add(new VideoConvertMessage(messageObject, messageObject.videoEditedInfo));
+        info.id = mNextConvertId;
+        mNextConvertId++;
+        videoConvertQueue.add(new VideoConvertMessage(info));
         if (videoConvertQueue.size() == 1) {
             startVideoConvertFromQueue();
         }
         return true;
     }
 
-    public void cancelVideoConvert(MessageObject messageObject) {
-        if (messageObject != null) {
+    public void cancelVideoConvert(VideoEditedInfo info) {
+        if (info != null) {
             if (!videoConvertQueue.isEmpty()) {
                 for (int a = 0; a < videoConvertQueue.size(); a++) {
                     VideoConvertMessage videoConvertMessage = videoConvertQueue.get(a);
-                    MessageObject object = videoConvertMessage.messageObject;
-                    if (object.equals(messageObject) && object.currentAccount == messageObject.currentAccount) {
+                    VideoEditedInfo object = videoConvertMessage.videoEditedInfo;
+                    if (object.id == info.id) {
                         if (a == 0) {
                             synchronized (videoConvertSync) {
                                 videoConvertMessage.videoEditedInfo.canceled = true;
@@ -289,12 +268,15 @@ public class MediaController {
                 startVideoConvertFromQueue();
             }
             if (error) {
-                NotificationCenter.getInstance(message.currentAccount).postNotificationName(NotificationCenter.filePreparingFailed, message.messageObject, file.toString(), progress, lastFrameTimestamp);
+                // TODO 转换失败
+//                NotificationCenter.getInstance(message.currentAccount).postNotificationName(NotificationCenter.filePreparingFailed, message.messageObject, file.toString(), progress, lastFrameTimestamp);
             } else {
                 if (firstWrite) {
-                    NotificationCenter.getInstance(message.currentAccount).postNotificationName(NotificationCenter.filePreparingStarted, message.messageObject, file.toString(), progress, lastFrameTimestamp);
+                    // TODO 转换开始
+//                    NotificationCenter.getInstance(message.currentAccount).postNotificationName(NotificationCenter.filePreparingStarted, message.messageObject, file.toString(), progress, lastFrameTimestamp);
                 }
-                NotificationCenter.getInstance(message.currentAccount).postNotificationName(NotificationCenter.fileNewChunkAvailable, message.messageObject, file.toString(), availableSize, last ? file.length() : 0, progress, lastFrameTimestamp);
+                // TODO 转换进度（last==true表示转换结束）
+//                NotificationCenter.getInstance(message.currentAccount).postNotificationName(NotificationCenter.fileNewChunkAvailable, message.messageObject, file.toString(), availableSize, last ? file.length() : 0, progress, lastFrameTimestamp);
             }
         });
     }
@@ -329,9 +311,8 @@ public class MediaController {
 
 
     private boolean convertVideo(final VideoConvertMessage convertMessage) {
-        MessageObject messageObject = convertMessage.messageObject;
         VideoEditedInfo info = convertMessage.videoEditedInfo;
-        if (messageObject == null || info == null) {
+        if (info == null) {
             return false;
         }
         String videoPath = info.originalPath;
@@ -346,8 +327,9 @@ public class MediaController {
         int framerate = info.framerate;
         int bitrate = info.bitrate;
         int originalBitrate = info.originalBitrate;
-        boolean isSecret = DialogObject.isEncryptedDialog(messageObject.getDialogId());
-        final File cacheFile = new File(messageObject.messageOwner.attachPath);
+//        boolean isSecret = DialogObject.isEncryptedDialog(messageObject.getDialogId());
+        boolean isSecret = false;
+        final File cacheFile = new File(info.attachPath);
         if (cacheFile.exists()) {
             cacheFile.delete();
         }
@@ -386,11 +368,11 @@ public class MediaController {
             framerate = 30;
         }
 
-        boolean needCompress = avatarStartTime != -1 || info.cropState != null || info.mediaEntities != null || info.paintPath != null || info.filterState != null ||
+        boolean needCompress = avatarStartTime != -1 || info.cropState != null ||
                 resultWidth != originalWidth || resultHeight != originalHeight || rotationValue != 0 || info.roundVideo || startTime != -1;
 
 
-        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("videoconvert", Activity.MODE_PRIVATE);
+//        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("videoconvert", Activity.MODE_PRIVATE);
 
         long time = System.currentTimeMillis();
 
@@ -431,9 +413,6 @@ public class MediaController {
                 framerate, bitrate, originalBitrate,
                 startTime, endTime, avatarStartTime,
                 needCompress, duration,
-                info.filterState,
-                info.paintPath,
-                info.mediaEntities,
                 info.cropState,
                 info.roundVideo,
                 callback);
@@ -450,7 +429,7 @@ public class MediaController {
             Log.d(TAG, "time=" + (System.currentTimeMillis() - time) + " canceled=" + canceled);
         }
 
-        preferences.edit().putBoolean("isPreviousOk", true).apply();
+//        preferences.edit().putBoolean("isPreviousOk", true).apply();
         didWriteData(convertMessage, cacheFile, true, videoConvertor.getLastFrameTimestamp(), cacheFile.length(), error || canceled, 1f);
 
         return true;

@@ -58,10 +58,10 @@ public class MP4Builder {
     private long dataOffset = 0;
     private long wroteSinceLastMdat = 0;
     private boolean writeNewMdat = true;
-    private HashMap<Track, long[]> track2SampleSizes = new HashMap<>();
+    private final HashMap<Track, long[]> track2SampleSizes = new HashMap<>();
     private ByteBuffer sizeBuffer = null;
     private boolean splitMdat;
-    private boolean wasFirstVideoFrame;
+//    private boolean wasFirstVideoFrame;
 
     public MP4Builder createMovie(Mp4Movie mp4Movie, boolean split) throws Exception {
         currentMp4Movie = mp4Movie;
@@ -403,8 +403,7 @@ public class MP4Builder {
         CompositionTimeToSample.Entry lastEntry = null;
         List<CompositionTimeToSample.Entry> entries = new ArrayList<>();
 
-        for (int a = 0; a < sampleCompositions.length; a++) {
-            int offset = sampleCompositions[a];
+        for (int offset : sampleCompositions) {
             if (lastEntry != null && lastEntry.getOffset() == offset) {
                 lastEntry.setCount(lastEntry.getCount() + 1);
             } else {
@@ -422,8 +421,7 @@ public class MP4Builder {
         List<TimeToSampleBox.Entry> entries = new ArrayList<>();
         long[] deltas = track.getSampleDurations();
 
-        for (int a = 0; a < deltas.length; a++) {
-            long delta = deltas[a];
+        for (long delta : deltas) {
             if (lastEntry != null && lastEntry.getDelta() == delta) {
                 lastEntry.setCount(lastEntry.getCount() + 1);
             } else {
@@ -489,12 +487,6 @@ public class MP4Builder {
         SampleSizeBox stsz = new SampleSizeBox();
         stsz.setSampleSizes(track2SampleSizes.get(track));
         stbl.addBox(stsz);
-    }
-
-    protected void createSidx(Track track, SampleTableBox stbl) {
-        //SampleSizeBox stsz = new SampleSizeBox();
-        //stsz.setSampleSizes(track2SampleSizes.get(track));
-        //stbl.addBox(stsz);
     }
 
     protected void createStco(Track track, SampleTableBox stbl) {

@@ -10,11 +10,9 @@ import android.util.Log;
 
 import org.telegram.messenger.MediaController;
 import org.telegram.messenger.Utilities;
-import org.telegram.messenger.VideoEditedInfo;
 
 import java.io.File;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 
 import chengdu.ws.telegram.BuildConfig;
 
@@ -28,13 +26,6 @@ public class MediaCodecVideoConvertor {
 
     private MediaController.VideoConvertorListener callback;
 
-    private final static int PROCESSOR_TYPE_OTHER = 0;
-    private final static int PROCESSOR_TYPE_QCOM = 1;
-    private final static int PROCESSOR_TYPE_INTEL = 2;
-    private final static int PROCESSOR_TYPE_MTK = 3;
-    private final static int PROCESSOR_TYPE_SEC = 4;
-    private final static int PROCESSOR_TYPE_TI = 5;
-
     private static final int MEDIACODEC_TIMEOUT_DEFAULT = 2500;
     private static final int MEDIACODEC_TIMEOUT_INCREASED = 22000;
 
@@ -45,15 +36,12 @@ public class MediaCodecVideoConvertor {
                                 int framerate, int bitrate, int originalBitrate,
                                 long startTime, long endTime, long avatarStartTime,
                                 boolean needCompress, long duration,
-                                MediaController.SavedFilterState savedFilterState,
-                                String paintPath,
-                                ArrayList<VideoEditedInfo.MediaEntity> mediaEntities,
                                 MediaController.CropState cropState,
                                 boolean isRound,
                                 MediaController.VideoConvertorListener callback) {
         this.callback = callback;
         return convertVideoInternal(videoPath, cacheFile, rotationValue, isSecret, originalWidth, originalHeight,
-                resultWidth, resultHeight, framerate, bitrate, originalBitrate, startTime, endTime, avatarStartTime, duration, needCompress, false, savedFilterState, paintPath, mediaEntities, cropState, isRound);
+                resultWidth, resultHeight, framerate, bitrate, originalBitrate, startTime, endTime, avatarStartTime, duration, needCompress, false, cropState, isRound);
     }
 
     public long getLastFrameTimestamp() {
@@ -69,9 +57,6 @@ public class MediaCodecVideoConvertor {
                                          long startTime, long endTime, long avatarStartTime,
                                          long duration,
                                          boolean needCompress, boolean increaseTimeout,
-                                         MediaController.SavedFilterState savedFilterState,
-                                         String paintPath,
-                                         ArrayList<VideoEditedInfo.MediaEntity> mediaEntities,
                                          MediaController.CropState cropState,
                                          boolean isRound) {
 
@@ -601,8 +586,7 @@ public class MediaCodecVideoConvertor {
             return convertVideoInternal(videoPath, cacheFile, rotationValue, isSecret,
                     originalWidth, originalHeight,
                     resultWidth, resultHeight, framerate, bitrate, originalBitrate, startTime, endTime, avatarStartTime, duration,
-                    needCompress, true, savedFilterState, paintPath, mediaEntities,
-                    cropState, isRound);
+                    needCompress, true, cropState, isRound);
         }
 
         long timeLeft = System.currentTimeMillis() - time;

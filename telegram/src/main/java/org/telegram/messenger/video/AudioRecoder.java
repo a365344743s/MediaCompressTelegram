@@ -13,9 +13,9 @@ import java.nio.ByteBuffer;
 public class AudioRecoder {
     private static final String TAG = AudioRecoder.class.getSimpleName();
 
-    private ByteBuffer[] decoderInputBuffers;
+    private final ByteBuffer[] decoderInputBuffers;
     private ByteBuffer[] decoderOutputBuffers;
-    private ByteBuffer[] encoderInputBuffers;
+    private final ByteBuffer[] encoderInputBuffers;
     private ByteBuffer[] encoderOutputBuffers;
     private final MediaCodec.BufferInfo decoderOutputBufferInfo = new MediaCodec.BufferInfo();
     private final MediaCodec.BufferInfo encoderOutputBufferInfo = new MediaCodec.BufferInfo();

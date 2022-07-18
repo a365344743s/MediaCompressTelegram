@@ -37,8 +37,8 @@ public class Track {
 
     private static class SamplePresentationTime {
 
-        private int index;
-        private long presentationTime;
+        private final int index;
+        private final long presentationTime;
         private long dt;
 
         public SamplePresentationTime(int idx, long time) {
@@ -47,24 +47,24 @@ public class Track {
         }
     }
 
-    private long trackId;
-    private ArrayList<Sample> samples = new ArrayList<>();
+    private final long trackId;
+    private final ArrayList<Sample> samples = new ArrayList<>();
     private long duration = 0;
     private int[] sampleCompositions;
-    private String handler;
-    private AbstractMediaHeaderBox headerBox;
-    private SampleDescriptionBox sampleDescriptionBox;
+    private final String handler;
+    private final AbstractMediaHeaderBox headerBox;
+    private final SampleDescriptionBox sampleDescriptionBox;
     private LinkedList<Integer> syncSamples = null;
-    private int timeScale;
-    private Date creationTime = new Date();
+    private final int timeScale;
+    private final Date creationTime = new Date();
     private int height;
     private int width;
     private float volume = 0;
     private long[] sampleDurations;
-    private ArrayList<SamplePresentationTime> samplePresentationTimes = new ArrayList<>();
-    private boolean isAudio;
-    private static Map<Integer, Integer> samplingFrequencyIndexMap = new HashMap<>();
-    private boolean first = true;
+    private final ArrayList<SamplePresentationTime> samplePresentationTimes = new ArrayList<>();
+    private final boolean isAudio;
+    private static final Map<Integer, Integer> samplingFrequencyIndexMap = new HashMap<>();
+//    private boolean first = true;
 
     static {
         samplingFrequencyIndexMap.put(96000, 0x0);
