@@ -85,8 +85,8 @@ public class MediaCodecVideoConvertor {
             extractor = new MediaExtractor();
             extractor.setDataSource(videoPath);
 
-            int videoIndex = MediaController.findTrack(extractor, false);
-            int audioIndex = bitrate != -1 ? MediaController.findTrack(extractor, true) : -1;
+            int videoIndex = findTrack(extractor, false);
+            int audioIndex = bitrate != -1 ? findTrack(extractor, true) : -1;
             boolean needConvertVideo = false;
             if (videoIndex >= 0 && !extractor.getTrackFormat(videoIndex).getString(MediaFormat.KEY_MIME).equals(MediaController.VIDEO_MIME_TYPE)) {
                 needConvertVideo = true;
@@ -106,7 +106,6 @@ public class MediaCodecVideoConvertor {
                         boolean outputDone = false;
                         boolean inputDone = false;
                         boolean decoderDone = false;
-                        int swapUV = 0;
                         int audioTrackIndex = -5;
                         long additionalPresentationTime = 0;
                         long minPresentationTime = Integer.MIN_VALUE;
@@ -599,8 +598,8 @@ public class MediaCodecVideoConvertor {
 
     private long readAndWriteTracks(MediaExtractor extractor, MP4Builder mediaMuxer,
                                     MediaCodec.BufferInfo info, long start, long end, long duration, File file, boolean needAudio) throws Exception {
-        int videoTrackIndex = MediaController.findTrack(extractor, false);
-        int audioTrackIndex = needAudio ? MediaController.findTrack(extractor, true) : -1;
+        int videoTrackIndex = findTrack(extractor, false);
+        int audioTrackIndex = needAudio ? findTrack(extractor, true) : -1;
         int muxerVideoTrackIndex = -1;
         int muxerAudioTrackIndex = -1;
         boolean inputDone = false;
@@ -756,6 +755,24 @@ public class MediaCodecVideoConvertor {
             throw new ConversionCanceledException();
     }
 
+    private static int findTrack(MediaExtractor extractor, boolean audio) {
+        int numTracks = extractor.getTrackCount();
+        for (int i = 0; i < numTracks; i++) {
+            MediaFormat format = extractor.getTrackFormat(i);
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            if (audio) {
+                if (mime.startsWith("audio/")) {
+                    return i;
+                }
+            } else {
+                if (mime.startsWith("video/")) {
+                    return i;
+                }
+            }
+        }
+        return -5;
+    }
+
     private static String createFragmentShader(
             final int srcWidth,
             final int srcHeight,
@@ -805,11 +822,9 @@ public class MediaCodecVideoConvertor {
         }
     }
 
-    public class ConversionCanceledException extends RuntimeException {
-
+    public static class ConversionCanceledException extends RuntimeException {
         public ConversionCanceledException() {
             super("canceled conversion");
         }
     }
-
 }

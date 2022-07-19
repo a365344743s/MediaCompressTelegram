@@ -1,128 +1,95 @@
 package org.telegram.messenger;
 
-import android.annotation.SuppressLint;
-import android.content.ContentResolver;
-import android.content.ContentValues;
-import android.content.Context;
-import android.media.MediaCodec;
+import android.app.Application;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
-import android.media.MediaExtractor;
-import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
-import android.media.MediaMuxer;
-import android.net.Uri;
 import android.os.Build;
-import android.os.ParcelFileDescriptor;
-import android.provider.MediaStore;
-import android.util.Pair;
+import android.util.Log;
 
-import com.coremedia.iso.IsoFile;
-import com.coremedia.iso.boxes.Box;
-import com.coremedia.iso.boxes.MediaBox;
-import com.coremedia.iso.boxes.MediaHeaderBox;
-import com.coremedia.iso.boxes.SampleSizeBox;
-import com.coremedia.iso.boxes.TimeToSampleBox;
-import com.coremedia.iso.boxes.TrackBox;
-import com.coremedia.iso.boxes.TrackHeaderBox;
-import com.googlecode.mp4parser.util.Matrix;
-import com.googlecode.mp4parser.util.Path;
+import androidx.annotation.Nullable;
 
-import java.io.File;
-import java.util.List;
+import org.telegram.ui.Components.AnimatedFileDrawable;
 
-/**
- * Created by huangwei on 2018/3/8 0008.
- */
+import java.util.WeakHashMap;
+
+import chengdu.ws.telegram.BuildConfig;
 
 public class VideoUtil {
-    public final static String MIME_TYPE = "video/avc";
+    private static final String TAG = Utilities.class.getSimpleName();
+    private static final WeakHashMap<Integer, VideoEditedInfo> sConvertInfoMap = new WeakHashMap<>();
+
+    public static void init(Application application) {
+        MediaController.getInstance().init(application);
+    }
+
+    /**
+     * 开始视频转换
+     *
+     * @param videoPath  视频路径
+     * @param attachPath 转换后路径
+     * @param listener   回调
+     * @return 唯一id
+     */
+    @Nullable
+    public static Integer startVideoConvert(String videoPath, String attachPath, MediaController.ConvertorListener listener) {
+        VideoEditedInfo info = createCompressionSettings(videoPath);
+        if (info == null) {
+            return null;
+        }
+        info.attachPath = attachPath;
+        boolean ret = MediaController.getInstance().scheduleVideoConvert(info, listener);
+        if (!ret) {
+            return null;
+        }
+        sConvertInfoMap.put(info.id, info);
+        return info.id;
+    }
+
+    /**
+     * 停止视频转换
+     *
+     * @param id 唯一id
+     */
+    public static void stopVideoConvert(int id) {
+        VideoEditedInfo info = sConvertInfoMap.remove(id);
+        if (info != null) {
+            MediaController.getInstance().cancelVideoConvert(info);
+        }
+    }
 
     /**
      * 压缩参数设置
-     * @param videoPath
-     * @return
+     *
+     * @param videoPath 视频路径
      */
-    public static VideoEditedInfo createCompressionSettings(String videoPath) {
-        TrackHeaderBox trackHeaderBox = null;
-        int originalBitrate = 0;
-        int bitrate = 0;
-        float videoDuration = 0.0f;
-        long videoFramesSize = 0;
-        long audioFramesSize = 0;
-        int videoFramerate = 25;
-        try {
-            IsoFile isoFile = new IsoFile(videoPath);
-            List<Box> boxes = Path.getPaths(isoFile, "/moov/trak/");
+    private static VideoEditedInfo createCompressionSettings(String videoPath) {
+        int[] params = new int[AnimatedFileDrawable.PARAM_NUM_COUNT];
+        AnimatedFileDrawable.getVideoInfo(videoPath, params);
 
-            Box boxTest = Path.getPath(isoFile, "/moov/trak/mdia/minf/stbl/stsd/mp4a/");
-            if (boxTest == null) {
+        if (params[AnimatedFileDrawable.PARAM_NUM_SUPPORTED_VIDEO_CODEC] == 0) {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "video hasn't avc1 atom");
             }
-
-            boxTest = Path.getPath(isoFile, "/moov/trak/mdia/minf/stbl/stsd/avc1/");
-            if (boxTest == null) {
-                return null;
-            }
-
-            for (int b = 0; b < boxes.size(); b++) {
-                Box box = boxes.get(b);
-                TrackBox trackBox = (TrackBox) box;
-                long sampleSizes = 0;
-                long trackBitrate = 0;
-                MediaBox mediaBox = null;
-                MediaHeaderBox mediaHeaderBox = null;
-                try {
-                    mediaBox = trackBox.getMediaBox();
-                    mediaHeaderBox = mediaBox.getMediaHeaderBox();
-                    SampleSizeBox sampleSizeBox = mediaBox.getMediaInformationBox().getSampleTableBox().getSampleSizeBox();
-                    long[] sizes = sampleSizeBox.getSampleSizes();
-                    for (int a = 0; a < sizes.length; a++) {
-                        sampleSizes += sizes[a];
-                    }
-                    videoDuration = (float) mediaHeaderBox.getDuration() / (float) mediaHeaderBox.getTimescale();
-                    trackBitrate = (int) (sampleSizes * 8 / videoDuration);
-                } catch (Exception e) {
-                }
-                TrackHeaderBox headerBox = trackBox.getTrackHeaderBox();
-                if (headerBox.getWidth() != 0 && headerBox.getHeight() != 0) {
-                    if (trackHeaderBox == null || trackHeaderBox.getWidth() < headerBox.getWidth() || trackHeaderBox.getHeight() < headerBox.getHeight()) {
-                        trackHeaderBox = headerBox;
-                        originalBitrate = bitrate = (int) (trackBitrate / 100000 * 100000);
-                        if (bitrate > 800000) {
-                            bitrate = 800000;
-                        }
-                        videoFramesSize += sampleSizes;
-
-                        if (mediaBox != null && mediaHeaderBox != null) {
-                            TimeToSampleBox timeToSampleBox = mediaBox.getMediaInformationBox().getSampleTableBox().getTimeToSampleBox();
-                            if (timeToSampleBox != null) {
-                                List<TimeToSampleBox.Entry> entries = timeToSampleBox.getEntries();
-                                long delta = 0;
-                                int size = Math.min(entries.size(), 11);
-                                for (int a = 1; a < size; a++) {
-                                    delta += entries.get(a).getDelta();
-                                }
-                                if (delta != 0) {
-                                    videoFramerate = (int) ((double) mediaHeaderBox.getTimescale() / (delta / (size - 1)));
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    audioFramesSize += sampleSizes;
-                }
-            }
-        } catch (Exception e) {
             return null;
         }
-        if (trackHeaderBox == null) {
-            return null;
+
+        int originalBitrate = getVideoBitrate(videoPath);
+        if (originalBitrate == -1) {
+            originalBitrate = params[AnimatedFileDrawable.PARAM_NUM_BITRATE];
         }
+        int bitrate = originalBitrate;
+        float videoDuration = params[AnimatedFileDrawable.PARAM_NUM_DURATION];
+        int videoFramerate = params[AnimatedFileDrawable.PARAM_NUM_FRAMERATE];
+
 
         if (Build.VERSION.SDK_INT < 18) {
             try {
-                MediaCodecInfo codecInfo = selectCodec(MIME_TYPE);
+                MediaCodecInfo codecInfo = selectCodec(MediaController.VIDEO_MIME_TYPE);
                 if (codecInfo == null) {
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "no codec info for " + MediaController.VIDEO_MIME_TYPE);
+                    }
                     return null;
                 } else {
                     String name = codecInfo.getName();
@@ -133,9 +100,15 @@ public class VideoUtil {
                             name.equals("OMX.MARVELL.VIDEO.H264ENCODER") ||
                             name.equals("OMX.k3.video.encoder.avc") ||
                             name.equals("OMX.TI.DUCATI1.VIDEO.H264E")) {
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "unsupported encoder = " + name);
+                        }
                         return null;
                     } else {
-                        if (selectColorFormat(codecInfo, MIME_TYPE) == 0) {
+                        if (selectColorFormat(codecInfo, MediaController.VIDEO_MIME_TYPE) == 0) {
+                            if (BuildConfig.DEBUG) {
+                                Log.d(TAG, "no color format for " + MediaController.VIDEO_MIME_TYPE);
+                            }
                             return null;
                         }
                     }
@@ -144,79 +117,71 @@ public class VideoUtil {
                 return null;
             }
         }
-        videoDuration *= 1000;
 
         VideoEditedInfo videoEditedInfo = new VideoEditedInfo();
         videoEditedInfo.startTime = -1;
         videoEditedInfo.endTime = -1;
-        videoEditedInfo.bitrate = bitrate;
+        videoEditedInfo.originalBitrate = videoEditedInfo.bitrate = bitrate;
         videoEditedInfo.originalPath = videoPath;
         videoEditedInfo.framerate = videoFramerate;
-        videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = (int) trackHeaderBox.getWidth();
-        videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = (int) trackHeaderBox.getHeight();
+        videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = params[AnimatedFileDrawable.PARAM_NUM_WIDTH];
+        videoEditedInfo.resultHeight = videoEditedInfo.originalHeight = params[AnimatedFileDrawable.PARAM_NUM_HEIGHT];
+        videoEditedInfo.rotationValue = params[AnimatedFileDrawable.PARAM_NUM_ROTATION];
+        videoEditedInfo.originalDuration = (long) (videoDuration * 1000);
 
-        Matrix matrix = trackHeaderBox.getMatrix();
-        if (matrix.equals(Matrix.ROTATE_90)) {
-            videoEditedInfo.rotationValue = 90;
-        } else if (matrix.equals(Matrix.ROTATE_180)) {
-            videoEditedInfo.rotationValue = 180;
-        } else if (matrix.equals(Matrix.ROTATE_270)) {
-            videoEditedInfo.rotationValue = 270;
-        } else {
-            videoEditedInfo.rotationValue = 0;
-        }
-
-        int selectedCompression = 1;
         int compressionsCount;
-        if (videoEditedInfo.originalWidth > 1280 || videoEditedInfo.originalHeight > 1280) {
-            compressionsCount = 5;
-        } else if (videoEditedInfo.originalWidth > 848 || videoEditedInfo.originalHeight > 848) {
+
+        float maxSize = Math.max(videoEditedInfo.originalWidth, videoEditedInfo.originalHeight);
+        if (maxSize > 1280) {
             compressionsCount = 4;
-        } else if (videoEditedInfo.originalWidth > 640 || videoEditedInfo.originalHeight > 640) {
+        } else if (maxSize > 854) {
             compressionsCount = 3;
-        } else if (videoEditedInfo.originalWidth > 480 || videoEditedInfo.originalHeight > 480) {
+        } else if (maxSize > 640) {
             compressionsCount = 2;
         } else {
             compressionsCount = 1;
         }
 
-        if (selectedCompression >= compressionsCount) {
-            selectedCompression = compressionsCount - 1;
+        // WIFI || MOBILE
+        int selectedCompression = Math.round(100 / (100f / compressionsCount));
+        // ROAMING
+//        int selectedCompression = Math.round(50 / (100f / compressionsCount));
+
+        if (selectedCompression > compressionsCount) {
+            selectedCompression = compressionsCount;
         }
-        if (selectedCompression != compressionsCount - 1) {
-            float maxSize;
-            int targetBitrate;
+        boolean needCompress = false;
+        if (selectedCompression != compressionsCount || Math.max(videoEditedInfo.originalWidth, videoEditedInfo.originalHeight) > 1280) {
+            needCompress = true;
             switch (selectedCompression) {
-                case 0:
-                    maxSize = 432.0f;
-                    targetBitrate = 300000;
-                    break;
                 case 1:
-                    maxSize = 640.0f;
-                    targetBitrate = 800000;
+                    maxSize = 432.0f;
                     break;
                 case 2:
-                    maxSize = 848.0f;
-                    targetBitrate = 1000000;
+                    maxSize = 640.0f;
                     break;
                 case 3:
+                    maxSize = 848.0f;
+                    break;
                 default:
-                    targetBitrate = 2400000;
                     maxSize = 1280.0f;
                     break;
             }
             float scale = videoEditedInfo.originalWidth > videoEditedInfo.originalHeight ? maxSize / videoEditedInfo.originalWidth : maxSize / videoEditedInfo.originalHeight;
             videoEditedInfo.resultWidth = Math.round(videoEditedInfo.originalWidth * scale / 2) * 2;
             videoEditedInfo.resultHeight = Math.round(videoEditedInfo.originalHeight * scale / 2) * 2;
-            if (bitrate != 0) {
-                bitrate = Math.min(targetBitrate, (int) (originalBitrate / scale));
-            }
         }
+        bitrate = makeVideoBitrate(
+                videoEditedInfo.originalHeight, videoEditedInfo.originalWidth,
+                originalBitrate,
+                videoEditedInfo.resultHeight, videoEditedInfo.resultWidth
+        );
 
-        if (selectedCompression == compressionsCount - 1) {
+
+        if (!needCompress) {
             videoEditedInfo.resultWidth = videoEditedInfo.originalWidth;
             videoEditedInfo.resultHeight = videoEditedInfo.originalHeight;
-            videoEditedInfo.bitrate = originalBitrate;
+            videoEditedInfo.bitrate = bitrate;
         } else {
             videoEditedInfo.bitrate = bitrate;
         }
@@ -224,7 +189,21 @@ public class VideoUtil {
         return videoEditedInfo;
     }
 
-    @SuppressLint("NewApi")
+    private static int getVideoBitrate(String path) {
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        int bitrate = 0;
+        try {
+            retriever.setDataSource(path);
+            bitrate = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
+        } catch (Exception e) {
+            Log.e(TAG, e.getLocalizedMessage());
+            e.printStackTrace();
+        }
+
+        retriever.release();
+        return bitrate;
+    }
+
     private static MediaCodecInfo selectCodec(String mimeType) {
         int numCodecs = MediaCodecList.getCodecCount();
         MediaCodecInfo lastCodecInfo = null;
@@ -251,7 +230,6 @@ public class VideoUtil {
         return lastCodecInfo;
     }
 
-    @SuppressLint("NewApi")
     private static int selectColorFormat(MediaCodecInfo codecInfo, String mimeType) {
         MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType(mimeType);
         int lastColorFormat = 0;
@@ -267,6 +245,39 @@ public class VideoUtil {
         return lastColorFormat;
     }
 
+    private static int makeVideoBitrate(int originalHeight, int originalWidth, int originalBitrate, int height, int width) {
+        float compressFactor;
+        float minCompressFactor;
+        int maxBitrate;
+        if (Math.min(height, width) >= 1080) {
+            maxBitrate = 6800_000;
+            compressFactor = 1f;
+            minCompressFactor = 1f;
+        } else if (Math.min(height, width) >= 720) {
+            maxBitrate = 2600_000;
+            compressFactor = 1f;
+            minCompressFactor = 1f;
+        } else if (Math.min(height, width) >= 480) {
+            maxBitrate = 1000_000;
+            compressFactor = 0.75f;
+            minCompressFactor = 0.9f;
+        } else {
+            maxBitrate = 750_000;
+            compressFactor = 0.6f;
+            minCompressFactor = 0.7f;
+        }
+        int remeasuredBitrate = (int) (originalBitrate / (Math.min(originalHeight / (float) (height), originalWidth / (float) (width))));
+        remeasuredBitrate *= compressFactor;
+        int minBitrate = (int) (getVideoBitrateWithFactor(minCompressFactor) / (1280f * 720f / (width * height)));
+        if (originalBitrate < minBitrate) {
+            return remeasuredBitrate;
+        }
+        if (remeasuredBitrate > maxBitrate) {
+            return maxBitrate;
+        }
+        return Math.max(remeasuredBitrate, minBitrate);
+    }
+
     private static boolean isRecognizedFormat(int colorFormat) {
         switch (colorFormat) {
             case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
@@ -278,5 +289,9 @@ public class VideoUtil {
             default:
                 return false;
         }
+    }
+
+    private static int getVideoBitrateWithFactor(float f) {
+        return (int) (f * 2000f * 1000f * 1.13f);
     }
 }

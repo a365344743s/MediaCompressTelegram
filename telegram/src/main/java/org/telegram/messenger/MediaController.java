@@ -8,17 +8,11 @@
 
 package org.telegram.messenger;
 
-import android.annotation.SuppressLint;
 import android.app.Application;
-import android.content.Context;
 import android.graphics.Matrix;
-import android.media.MediaCodecInfo;
-import android.media.MediaCodecList;
-import android.media.MediaExtractor;
-import android.media.MediaFormat;
-import android.media.MediaMetadataRetriever;
-import android.os.Handler;
 import android.util.Log;
+
+import androidx.annotation.Nullable;
 
 import org.telegram.messenger.video.MediaCodecVideoConvertor;
 
@@ -29,6 +23,17 @@ import chengdu.ws.telegram.BuildConfig;
 
 public class MediaController {
     private static final String TAG = MediaController.class.getSimpleName();
+
+    public final static String VIDEO_MIME_TYPE = "video/avc";
+    public final static String AUIDO_MIME_TYPE = "audio/mp4a-latm";
+
+    private final Object videoConvertSync = new Object();
+    private final ArrayList<VideoConvertMessage> videoConvertQueue = new ArrayList<>();
+    @Nullable
+    private VideoConvertMessage videoConvertRunning;
+    private int mNextConvertId = Integer.MIN_VALUE;
+
+    private static volatile MediaController Instance;
 
     public static class CropState {
         public float cropPx;
@@ -80,22 +85,15 @@ public class MediaController {
         }
     }
 
-    public final static String VIDEO_MIME_TYPE = "video/avc";
-    public final static String AUIDO_MIME_TYPE = "audio/mp4a-latm";
-
-    private final Object videoConvertSync = new Object();
-
     private static class VideoConvertMessage {
         public VideoEditedInfo videoEditedInfo;
+        public ConvertorListener listener;
 
-        public VideoConvertMessage(VideoEditedInfo info) {
+        public VideoConvertMessage(VideoEditedInfo info, ConvertorListener listener) {
             videoEditedInfo = info;
+            this.listener = listener;
         }
     }
-
-    private ArrayList<VideoConvertMessage> videoConvertQueue = new ArrayList<>();
-
-    private static volatile MediaController Instance;
 
     public static MediaController getInstance() {
         MediaController localInstance = Instance;
@@ -119,15 +117,16 @@ public class MediaController {
 
     public void cleanup() {
         videoConvertQueue.clear();
-        cancelVideoConvert(null);
+        if (videoConvertRunning != null) {
+            cancelVideoConvert(videoConvertRunning.videoEditedInfo);
+        }
     }
 
-    private int mNextConvertId = Integer.MIN_VALUE;
-    public void scheduleVideoConvert(VideoEditedInfo info) {
-        scheduleVideoConvert(info, false);
+    public boolean scheduleVideoConvert(VideoEditedInfo info, ConvertorListener listener) {
+        return scheduleVideoConvert(info, listener, false);
     }
 
-    public boolean scheduleVideoConvert(VideoEditedInfo info, boolean isEmpty) {
+    public boolean scheduleVideoConvert(VideoEditedInfo info, ConvertorListener listener, boolean isEmpty) {
         if (info == null) {
             return false;
         }
@@ -138,7 +137,7 @@ public class MediaController {
         }
         info.id = mNextConvertId;
         mNextConvertId++;
-        videoConvertQueue.add(new VideoConvertMessage(info));
+        videoConvertQueue.add(new VideoConvertMessage(info, listener));
         if (videoConvertQueue.size() == 1) {
             startVideoConvertFromQueue();
         }
@@ -166,58 +165,6 @@ public class MediaController {
         }
     }
 
-    public static int getVideoBitrate(String path) {
-        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-        int bitrate = 0;
-        try {
-            retriever.setDataSource(path);
-            bitrate = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
-        } catch (Exception e) {
-            Log.e(TAG, e.getLocalizedMessage());
-            e.printStackTrace();
-        }
-
-        retriever.release();
-        return bitrate;
-    }
-
-    public static int makeVideoBitrate(int originalHeight, int originalWidth, int originalBitrate, int height, int width) {
-        float compressFactor;
-        float minCompressFactor;
-        int maxBitrate;
-        if (Math.min(height, width) >= 1080) {
-            maxBitrate = 6800_000;
-            compressFactor = 1f;
-            minCompressFactor = 1f;
-        } else if (Math.min(height, width) >= 720) {
-            maxBitrate = 2600_000;
-            compressFactor = 1f;
-            minCompressFactor = 1f;
-        } else if (Math.min(height, width) >= 480) {
-            maxBitrate = 1000_000;
-            compressFactor = 0.75f;
-            minCompressFactor = 0.9f;
-        } else {
-            maxBitrate = 750_000;
-            compressFactor = 0.6f;
-            minCompressFactor = 0.7f;
-        }
-        int remeasuredBitrate = (int) (originalBitrate / (Math.min(originalHeight / (float) (height), originalWidth / (float) (width))));
-        remeasuredBitrate *= compressFactor;
-        int minBitrate = (int) (getVideoBitrateWithFactor(minCompressFactor) / (1280f * 720f / (width * height)));
-        if (originalBitrate < minBitrate) {
-            return remeasuredBitrate;
-        }
-        if (remeasuredBitrate > maxBitrate) {
-            return maxBitrate;
-        }
-        return Math.max(remeasuredBitrate, minBitrate);
-    }
-
-    private static int getVideoBitrateWithFactor(float f) {
-        return (int) (f * 2000f * 1000f * 1.13f);
-    }
-
     private boolean startVideoConvertFromQueue() {
         if (!videoConvertQueue.isEmpty()) {
             VideoConvertMessage videoConvertMessage = videoConvertQueue.get(0);
@@ -227,84 +174,11 @@ public class MediaController {
                     videoEditedInfo.canceled = false;
                 }
             }
+            videoConvertRunning = videoConvertMessage;
             VideoConvertRunnable.runConversion(videoConvertMessage);
             return true;
         }
         return false;
-    }
-
-    @SuppressLint("NewApi")
-    public static MediaCodecInfo selectCodec(String mimeType) {
-        int numCodecs = MediaCodecList.getCodecCount();
-        MediaCodecInfo lastCodecInfo = null;
-        for (int i = 0; i < numCodecs; i++) {
-            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
-            if (!codecInfo.isEncoder()) {
-                continue;
-            }
-            String[] types = codecInfo.getSupportedTypes();
-            for (String type : types) {
-                if (type.equalsIgnoreCase(mimeType)) {
-                    lastCodecInfo = codecInfo;
-                    String name = lastCodecInfo.getName();
-                    if (name != null) {
-                        if (!name.equals("OMX.SEC.avc.enc")) {
-                            return lastCodecInfo;
-                        } else if (name.equals("OMX.SEC.AVC.Encoder")) {
-                            return lastCodecInfo;
-                        }
-                    }
-                }
-            }
-        }
-        return lastCodecInfo;
-    }
-
-    private static boolean isRecognizedFormat(int colorFormat) {
-        switch (colorFormat) {
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_TI_FormatYUV420PackedSemiPlanar:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    @SuppressLint("NewApi")
-    public static int selectColorFormat(MediaCodecInfo codecInfo, String mimeType) {
-        MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType(mimeType);
-        int lastColorFormat = 0;
-        for (int i = 0; i < capabilities.colorFormats.length; i++) {
-            int colorFormat = capabilities.colorFormats[i];
-            if (isRecognizedFormat(colorFormat)) {
-                lastColorFormat = colorFormat;
-                if (!(codecInfo.getName().equals("OMX.SEC.AVC.Encoder") && colorFormat == 19)) {
-                    return colorFormat;
-                }
-            }
-        }
-        return lastColorFormat;
-    }
-
-    public static int findTrack(MediaExtractor extractor, boolean audio) {
-        int numTracks = extractor.getTrackCount();
-        for (int i = 0; i < numTracks; i++) {
-            MediaFormat format = extractor.getTrackFormat(i);
-            String mime = format.getString(MediaFormat.KEY_MIME);
-            if (audio) {
-                if (mime.startsWith("audio/")) {
-                    return i;
-                }
-            } else {
-                if (mime.startsWith("video/")) {
-                    return i;
-                }
-            }
-        }
-        return -5;
     }
 
     private void didWriteData(final VideoConvertMessage message, final File file, final boolean last, final long lastFrameTimestamp, long availableSize, final boolean error, final float progress) {
@@ -318,25 +192,27 @@ public class MediaController {
                     message.videoEditedInfo.canceled = false;
                 }
                 videoConvertQueue.remove(message);
+                videoConvertRunning = null;
                 startVideoConvertFromQueue();
             }
             if (error) {
-                // TODO 转换失败
-//                NotificationCenter.getInstance(message.currentAccount).postNotificationName(NotificationCenter.filePreparingFailed, message.messageObject, file.toString(), progress, lastFrameTimestamp);
+                message.listener.onConvertFailed(message.videoEditedInfo, progress, lastFrameTimestamp);
             } else {
                 if (firstWrite) {
-                    // TODO 转换开始
-//                    NotificationCenter.getInstance(message.currentAccount).postNotificationName(NotificationCenter.filePreparingStarted, message.messageObject, file.toString(), progress, lastFrameTimestamp);
+                    message.listener.onConvertStart(message.videoEditedInfo, progress, lastFrameTimestamp);
                 }
-                // TODO 转换进度（last==true表示转换结束）
-//                NotificationCenter.getInstance(message.currentAccount).postNotificationName(NotificationCenter.fileNewChunkAvailable, message.messageObject, file.toString(), availableSize, last ? file.length() : 0, progress, lastFrameTimestamp);
+                if (last) {
+                    message.listener.onConvertSuccess(message.videoEditedInfo, file.length(), lastFrameTimestamp);
+                } else {
+                    message.listener.onConvertProgress(message.videoEditedInfo, availableSize, progress, lastFrameTimestamp);
+                }
             }
         });
     }
 
     private static class VideoConvertRunnable implements Runnable {
 
-        private VideoConvertMessage convertMessage;
+        private final VideoConvertMessage convertMessage;
 
         private VideoConvertRunnable(VideoConvertMessage message) {
             convertMessage = message;
@@ -361,7 +237,6 @@ public class MediaController {
             }).start();
         }
     }
-
 
     private boolean convertVideo(final VideoConvertMessage convertMessage) {
         VideoEditedInfo info = convertMessage.videoEditedInfo;
@@ -492,5 +367,27 @@ public class MediaController {
         boolean checkConversionCanceled();
 
         void didWriteData(long availableSize, float progress);
+    }
+
+    public interface ConvertorListener {
+        /**
+         * 转换开始
+         */
+        void onConvertStart(VideoEditedInfo info, float progress, long lastFrameTimestamp);
+
+        /**
+         * 转换进度
+         */
+        void onConvertProgress(VideoEditedInfo info, long availableSize, float progress, long lastFrameTimestamp);
+
+        /**
+         * 转换成功
+         */
+        void onConvertSuccess(VideoEditedInfo info, long fileLength, long lastFrameTimestamp);
+
+        /**
+         * 转换失败
+         */
+        void onConvertFailed(VideoEditedInfo info, float progress, long lastFrameTimestamp);
     }
 }
