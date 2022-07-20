@@ -1,6 +1,5 @@
 package org.telegram.messenger;
 
-import android.app.Application;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaMetadataRetriever;
@@ -13,14 +12,23 @@ import org.telegram.ui.Components.AnimatedFileDrawable;
 
 import java.util.WeakHashMap;
 
+import chengdu.ws.common.Scheduler;
 import chengdu.ws.telegram.BuildConfig;
 
-public class VideoUtil {
+public class VideoConvertUtil {
     private static final String TAG = Utilities.class.getSimpleName();
     private static final WeakHashMap<Integer, VideoEditedInfo> sConvertInfoMap = new WeakHashMap<>();
+    private static Scheduler sScheduler;
 
-    public static void init(Application application) {
-        MediaController.getInstance().init(application);
+    /**
+     * 初始化
+     */
+    public static void init(Scheduler scheduler) {
+        sScheduler = scheduler;
+    }
+
+    public static Scheduler getScheduler() {
+        return sScheduler;
     }
 
     /**

@@ -76,9 +76,9 @@ public final class InMemoryTranscoder implements Closeable {
     }
 
     @WorkerThread
-    public @NonNull
-    MediaStream transcode(@NonNull Progress progress,
-                          @Nullable TranscoderCancelationSignal cancelationSignal)
+    @NonNull
+    public MediaStream transcode(@NonNull Progress progress,
+                                 @Nullable TranscoderCancelationSignal cancelationSignal)
             throws IOException, EncodingException, VideoSizeException {
         if (memoryFile != null) throw new AssertionError("Not expecting to reuse transcoder");
 

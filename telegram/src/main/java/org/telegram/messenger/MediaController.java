@@ -8,11 +8,8 @@
 
 package org.telegram.messenger;
 
-import android.app.Application;
 import android.graphics.Matrix;
 import android.util.Log;
-
-import androidx.annotation.Nullable;
 
 import org.telegram.messenger.video.MediaCodecVideoConvertor;
 
@@ -29,8 +26,6 @@ public class MediaController {
 
     private final Object videoConvertSync = new Object();
     private final ArrayList<VideoConvertMessage> videoConvertQueue = new ArrayList<>();
-    @Nullable
-    private VideoConvertMessage videoConvertRunning;
     private int mNextConvertId = Integer.MIN_VALUE;
 
     private static volatile MediaController Instance;
@@ -108,18 +103,14 @@ public class MediaController {
         return localInstance;
     }
 
-    public MediaController() {
-    }
-
-    public void init(Application application) {
-        AndroidUtilities.init(application);
+    private MediaController() {
     }
 
     public void cleanup() {
-        videoConvertQueue.clear();
-        if (videoConvertRunning != null) {
-            cancelVideoConvert(videoConvertRunning.videoEditedInfo);
+        if (!videoConvertQueue.isEmpty()) {
+            cancelVideoConvert(videoConvertQueue.get(0).videoEditedInfo);
         }
+        videoConvertQueue.clear();
     }
 
     public boolean scheduleVideoConvert(VideoEditedInfo info, ConvertorListener listener) {
@@ -174,7 +165,6 @@ public class MediaController {
                     videoEditedInfo.canceled = false;
                 }
             }
-            videoConvertRunning = videoConvertMessage;
             VideoConvertRunnable.runConversion(videoConvertMessage);
             return true;
         }
@@ -186,13 +176,12 @@ public class MediaController {
         if (firstWrite) {
             message.videoEditedInfo.videoConvertFirstWrite = false;
         }
-        AndroidUtilities.runOnUIThread(() -> {
+        VideoConvertUtil.getScheduler().runOnUIThread(() -> {
             if (error || last) {
                 synchronized (videoConvertSync) {
                     message.videoEditedInfo.canceled = false;
                 }
                 videoConvertQueue.remove(message);
-                videoConvertRunning = null;
                 startVideoConvertFromQueue();
             }
             if (error) {
@@ -224,17 +213,14 @@ public class MediaController {
         }
 
         public static void runConversion(final VideoConvertMessage obj) {
-            new Thread(() -> {
+            VideoConvertUtil.getScheduler().runOnComputationThread(() -> {
                 try {
-                    VideoConvertRunnable wrapper = new VideoConvertRunnable(obj);
-                    Thread th = new Thread(wrapper, "VideoConvertRunnable");
-                    th.start();
-                    th.join();
+                    new VideoConvertRunnable(obj).run();
                 } catch (Exception e) {
                     Log.e(TAG, e.getLocalizedMessage());
                     e.printStackTrace();
                 }
-            }).start();
+            });
         }
     }
 
