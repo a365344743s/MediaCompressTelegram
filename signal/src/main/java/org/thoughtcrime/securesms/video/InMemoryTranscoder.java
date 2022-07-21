@@ -25,7 +25,6 @@ import java.util.Locale;
 
 @RequiresApi(26)
 public final class InMemoryTranscoder implements Closeable {
-
     private static final String TAG = InMemoryTranscoder.class.getSimpleName();
 
     private final Context context;
@@ -38,11 +37,10 @@ public final class InMemoryTranscoder implements Closeable {
     private final long memoryFileEstimate;
     private final boolean transcodeRequired;
     private final long fileSizeEstimate;
-    private final @Nullable
-    TranscoderOptions options;
-
-    private @Nullable
-    MemoryFileDescriptor memoryFile;
+    @Nullable
+    private final TranscoderOptions options;
+    @Nullable
+    private MemoryFileDescriptor memoryFile;
 
     /**
      * @param upperSizeLimit A upper size to transcode to. The actual output size can be up to 10% smaller.
@@ -79,7 +77,7 @@ public final class InMemoryTranscoder implements Closeable {
     @NonNull
     public MediaStream transcode(@NonNull Progress progress,
                                  @Nullable TranscoderCancelationSignal cancelationSignal)
-            throws IOException, EncodingException, VideoSizeException {
+            throws IOException, EncodingException {
         if (memoryFile != null) throw new AssertionError("Not expecting to reuse transcoder");
 
         float durationSec = duration / 1000f;

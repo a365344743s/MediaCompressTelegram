@@ -157,7 +157,7 @@ public class MediaController {
         });
     }
 
-    private static class Task {
+    public static class Task {
         private final String videoPath;
         private final String attachPath;
         private final long upperSizeLimit;
@@ -173,6 +173,47 @@ public class MediaController {
             this.useMemory = useMemory;
             this.listener = listener;
             this.id = id;
+        }
+
+        public String getVideoPath() {
+            return videoPath;
+        }
+
+        public String getAttachPath() {
+            return attachPath;
+        }
+
+        public long getUpperSizeLimit() {
+            return upperSizeLimit;
+        }
+
+        public boolean isUseMemory() {
+            return useMemory;
+        }
+
+        public ConvertorListener getListener() {
+            return listener;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public boolean isCanceled() {
+            return canceled;
+        }
+
+        @Override
+        public String toString() {
+            return "Task{" +
+                    "videoPath='" + videoPath + '\'' +
+                    ", attachPath='" + attachPath + '\'' +
+                    ", upperSizeLimit=" + upperSizeLimit +
+                    ", useMemory=" + useMemory +
+                    ", listener=" + listener +
+                    ", id=" + id +
+                    ", canceled=" + canceled +
+                    '}';
         }
     }
 

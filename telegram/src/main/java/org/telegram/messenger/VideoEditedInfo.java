@@ -32,4 +32,31 @@ public class VideoEditedInfo {
     public boolean videoConvertFirstWrite;
     public boolean needUpdateProgress = false;
     public boolean shouldLimitFps = true;
+
+    @Override
+    public String toString() {
+        return "VideoEditedInfo{" +
+                "originalWidth=" + originalWidth +
+                ", originalHeight=" + originalHeight +
+                ", originalBitrate=" + originalBitrate +
+                ", originalDuration=" + originalDuration +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
+                ", originalPath='" + originalPath + '\'' +
+                ", attachPath='" + attachPath + '\'' +
+                ", resultWidth=" + resultWidth +
+                ", resultHeight=" + resultHeight +
+                ", avatarStartTime=" + avatarStartTime +
+                ", rotationValue=" + rotationValue +
+                ", bitrate=" + bitrate +
+                ", framerate=" + framerate +
+                ", roundVideo=" + roundVideo +
+                ", cropState=" + cropState +
+                ", id=" + id +
+                ", canceled=" + canceled +
+                ", videoConvertFirstWrite=" + videoConvertFirstWrite +
+                ", needUpdateProgress=" + needUpdateProgress +
+                ", shouldLimitFps=" + shouldLimitFps +
+                '}';
+    }
 }
