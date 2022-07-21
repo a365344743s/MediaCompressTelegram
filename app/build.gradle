@@ -41,4 +41,5 @@ dependencies {
     implementation project(':telegram')
     implementation 'io.reactivex.rxjava3:rxjava:3.1.5'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
+    implementation 'com.blankj:utilcodex:1.31.0'
 }
