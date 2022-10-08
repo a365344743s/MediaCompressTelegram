@@ -16,6 +16,7 @@ import org.telegram.messenger.video.MediaCodecVideoConvertor;
 import java.io.File;
 import java.util.ArrayList;
 
+import chengdu.ws.common.FileUtils;
 import chengdu.ws.telegram.BuildConfig;
 
 public class MediaController {
@@ -244,9 +245,7 @@ public class MediaController {
 //        boolean isSecret = DialogObject.isEncryptedDialog(messageObject.getDialogId());
         boolean isSecret = false;
         final File cacheFile = new File(info.attachPath);
-        if (cacheFile.exists()) {
-            cacheFile.delete();
-        }
+        FileUtils.createFileByDeleteOldFile(info.attachPath);
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "begin convert " + videoPath + " startTime = " + startTime + " avatarStartTime = " + avatarStartTime + " endTime " + endTime + " rWidth = " + resultWidth + " rHeight = " + resultHeight + " rotation = " + rotationValue + " oWidth = " + originalWidth + " oHeight = " + originalHeight + " framerate = " + framerate + " bitrate = " + bitrate + " originalBitrate = " + originalBitrate);
         }

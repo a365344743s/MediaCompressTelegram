@@ -1,7 +1,6 @@
 package org.thoughtcrime.securesms.video;
 
 import android.content.Context;
-import android.media.MediaDataSource;
 import android.media.MediaMetadataRetriever;
 import android.util.Log;
 
@@ -17,6 +16,7 @@ import org.thoughtcrime.securesms.video.videoconverter.EncodingException;
 import org.thoughtcrime.securesms.video.videoconverter.MediaConverter;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -28,7 +28,7 @@ public final class InMemoryTranscoder implements Closeable {
     private static final String TAG = InMemoryTranscoder.class.getSimpleName();
 
     private final Context context;
-    private final MediaDataSource dataSource;
+    private final File dataSource;
     private final long upperSizeLimit;
     private final long inSize;
     private final long duration;
@@ -45,20 +45,20 @@ public final class InMemoryTranscoder implements Closeable {
     /**
      * @param upperSizeLimit A upper size to transcode to. The actual output size can be up to 10% smaller.
      */
-    public InMemoryTranscoder(@NonNull Context context, @NonNull MediaDataSource dataSource, @Nullable TranscoderOptions options, long upperSizeLimit) throws IOException, VideoSourceException {
+    public InMemoryTranscoder(@NonNull Context context, @NonNull File dataSource, @Nullable TranscoderOptions options, long upperSizeLimit) throws IOException, VideoSourceException {
         this.context = context;
         this.dataSource = dataSource;
         this.options = options;
 
         final MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
         try {
-            mediaMetadataRetriever.setDataSource(dataSource);
+            mediaMetadataRetriever.setDataSource(dataSource.getAbsolutePath());
         } catch (RuntimeException e) {
             Log.w(TAG, "Unable to read datasource", e);
             throw new VideoSourceException("Unable to read datasource", e);
         }
 
-        this.inSize = dataSource.getSize();
+        this.inSize = dataSource.length();
         this.duration = getDuration(mediaMetadataRetriever);
         this.inputBitRate = VideoBitRateCalculator.bitRate(inSize, duration);
         this.targetQuality = new VideoBitRateCalculator(upperSizeLimit).getTargetQuality(duration, inputBitRate);
@@ -116,7 +116,7 @@ public final class InMemoryTranscoder implements Closeable {
 
         final MediaConverter converter = new MediaConverter();
 
-        converter.setInput(new MediaInput.MediaDataSourceMediaInput(dataSource));
+        converter.setInput(new MediaInput.FileMediaInput(dataSource));
         converter.setOutput(memoryFileFileDescriptor);
         converter.setVideoResolution(targetQuality.getOutputResolution());
         converter.setVideoBitrate(targetQuality.getTargetVideoBitRate());

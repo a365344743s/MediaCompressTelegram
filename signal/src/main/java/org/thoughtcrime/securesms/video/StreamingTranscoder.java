@@ -1,6 +1,5 @@
 package org.thoughtcrime.securesms.video;
 
-import android.media.MediaDataSource;
 import android.media.MediaMetadataRetriever;
 import android.util.Log;
 
@@ -13,6 +12,7 @@ import org.thoughtcrime.securesms.media.MediaInput;
 import org.thoughtcrime.securesms.video.videoconverter.EncodingException;
 import org.thoughtcrime.securesms.video.videoconverter.MediaConverter;
 
+import java.io.File;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -24,7 +24,7 @@ public final class StreamingTranscoder {
 
     private static final String TAG = StreamingTranscoder.class.getSimpleName();
 
-    private final MediaDataSource dataSource;
+    private final File dataSource;
     private final long upperSizeLimit;
     private final long inSize;
     private final long duration;
@@ -39,7 +39,7 @@ public final class StreamingTranscoder {
     /**
      * @param upperSizeLimit A upper size to transcode to. The actual output size can be up to 10% smaller.
      */
-    public StreamingTranscoder(@NonNull MediaDataSource dataSource,
+    public StreamingTranscoder(@NonNull File dataSource,
                                @Nullable TranscoderOptions options,
                                long upperSizeLimit)
             throws IOException, VideoSourceException {
@@ -48,13 +48,13 @@ public final class StreamingTranscoder {
 
         final MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
         try {
-            mediaMetadataRetriever.setDataSource(dataSource);
+            mediaMetadataRetriever.setDataSource(dataSource.getAbsolutePath());
         } catch (RuntimeException e) {
             Log.w(TAG, "Unable to read datasource", e);
             throw new VideoSourceException("Unable to read datasource", e);
         }
 
-        this.inSize = dataSource.getSize();
+        this.inSize = dataSource.length();
         this.duration = getDuration(mediaMetadataRetriever);
         this.inputBitRate = VideoBitRateCalculator.bitRate(inSize, duration);
         this.targetQuality = new VideoBitRateCalculator(upperSizeLimit).getTargetQuality(duration, inputBitRate);
@@ -106,7 +106,7 @@ public final class StreamingTranscoder {
         final MediaConverter converter = new MediaConverter();
         final LimitedSizeOutputStream limitedSizeOutputStream = new LimitedSizeOutputStream(stream, upperSizeLimit);
 
-        converter.setInput(new MediaInput.MediaDataSourceMediaInput(dataSource));
+        converter.setInput(new MediaInput.FileMediaInput(dataSource));
         converter.setOutput(limitedSizeOutputStream);
         converter.setVideoResolution(targetQuality.getOutputResolution());
         converter.setVideoBitrate(targetQuality.getTargetVideoBitRate());

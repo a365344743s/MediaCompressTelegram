@@ -48,6 +48,7 @@ public class MediaController {
         videoConvertQueue.clear();
     }
 
+    @RequiresApi(26)
     @Nullable
     public Integer scheduleVideoConvert(String videoPath, String attachPath, long upperSizeLimit, boolean useMemory, ConvertorListener listener) {
         if (Build.VERSION.SDK_INT < 26 || (useMemory && !MemoryFileDescriptor.supported())) {
@@ -85,34 +86,7 @@ public class MediaController {
             task.canceled = false;
             VideoConvertUtil.getScheduler().runOnComputationThread(() -> {
                 if (task.useMemory) {
-                    try (FileMediaDataSource mediaDataSource = new FileMediaDataSource(task.videoPath)) {
-                        try (InMemoryTranscoder transcoder = new InMemoryTranscoder(VideoConvertUtil.getApp(), mediaDataSource, null, task.upperSizeLimit)) {
-                            final File cacheFile = new File(task.attachPath);
-                            if (cacheFile.exists()) {
-                                if (!cacheFile.delete()) {
-                                    throw new IOException("Delete file failed: " + task.attachPath);
-                                }
-                            }
-                            if (transcoder.isTranscodeRequired()) {
-                                try (MediaStream ms = transcoder.transcode(percent -> MediaController.this.onProgress(task, percent), () -> task.canceled)) {
-                                    if (!FileUtils.writeFileFromIS(task.attachPath, ms.getStream())) {
-                                        throw new IOException("WriteFileFromIS faild: " + task.attachPath);
-                                    }
-                                    MediaController.this.onFinish(task, null);
-                                }
-                            } else {
-                                FileUtils.copyFile(task.videoPath, task.attachPath);
-                                MediaController.this.onFinish(task, null);
-                            }
-                        }
-                    } catch (IOException | VideoSourceException | EncodingException e) {
-                        Log.e(TAG, e.getLocalizedMessage());
-                        e.printStackTrace();
-                        MediaController.this.onFinish(task, e);
-                    }
-                } else {
-                    try (FileMediaDataSource mediaDataSource = new FileMediaDataSource(task.videoPath)) {
-                        StreamingTranscoder transcoder = new StreamingTranscoder(mediaDataSource, null, task.upperSizeLimit);
+                    try (InMemoryTranscoder transcoder = new InMemoryTranscoder(VideoConvertUtil.getApp(), new File(task.videoPath), null, task.upperSizeLimit)) {
                         final File cacheFile = new File(task.attachPath);
                         if (cacheFile.exists()) {
                             if (!cacheFile.delete()) {
@@ -120,12 +94,37 @@ public class MediaController {
                             }
                         }
                         if (transcoder.isTranscodeRequired()) {
+                            try (MediaStream ms = transcoder.transcode(percent -> MediaController.this.onProgress(task, percent), () -> task.canceled)) {
+                                if (!chengdu.ws.common.FileUtils.createFileByDeleteOldFile(task.attachPath)) {
+                                    throw new IOException("createFileByDeleteOldFile failed: " + task.attachPath);
+                                }
+                                if (!chengdu.ws.common.FileUtils.writeFileFromIS(task.attachPath, ms.getStream())) {
+                                    throw new IOException("WriteFileFromIS failed: " + task.attachPath);
+                                }
+                                MediaController.this.onFinish(task, null);
+                            }
+                        } else {
+                            chengdu.ws.common.FileUtils.copyFile(task.videoPath, task.attachPath);
+                            MediaController.this.onFinish(task, null);
+                        }
+                    } catch (IOException | VideoSourceException | EncodingException e) {
+                        Log.e(TAG, e.getLocalizedMessage());
+                        e.printStackTrace();
+                        MediaController.this.onFinish(task, e);
+                    }
+                } else {
+                    try {
+                        StreamingTranscoder transcoder = new StreamingTranscoder(new File(task.videoPath), null, task.upperSizeLimit);
+                        if (!chengdu.ws.common.FileUtils.createFileByDeleteOldFile(task.attachPath)) {
+                            throw new IOException("createFileByDeleteOldFile failed: " + task.attachPath);
+                        }
+                        if (transcoder.isTranscodeRequired()) {
                             try (OutputStream os = new BufferedOutputStream(new FileOutputStream(task.attachPath))) {
                                 transcoder.transcode(percent -> MediaController.this.onProgress(task, percent), os, () -> task.canceled);
                                 MediaController.this.onFinish(task, null);
                             }
                         } else {
-                            FileUtils.copyFile(task.videoPath, task.attachPath);
+                            chengdu.ws.common.FileUtils.copyFile(task.videoPath, task.attachPath);
                             MediaController.this.onFinish(task, null);
                         }
                     } catch (IOException | VideoSourceException | EncodingException e) {

@@ -14,7 +14,7 @@
         android:id="@+id/btn_signal_memory"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="signal_memoty" />
+        android:text="signal_memory" />
 
     <Button
         android:id="@+id/btn_signal_stream"

@@ -12,7 +12,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 
-public abstract class MediaInput implements Closeable {
+public abstract class MediaInput {
 
   @NonNull
   public abstract MediaExtractor createExtractor() throws IOException;
@@ -30,10 +30,6 @@ public abstract class MediaInput implements Closeable {
       final MediaExtractor extractor = new MediaExtractor();
       extractor.setDataSource(file.getAbsolutePath());
       return extractor;
-    }
-
-    @Override
-    public void close() {
     }
   }
 
@@ -53,10 +49,6 @@ public abstract class MediaInput implements Closeable {
       extractor.setDataSource(context, uri, null);
       return extractor;
     }
-
-    @Override
-    public void close() {
-    }
   }
 
   @RequiresApi(23)
@@ -73,11 +65,6 @@ public abstract class MediaInput implements Closeable {
       final MediaExtractor extractor = new MediaExtractor();
       extractor.setDataSource(mediaDataSource);
       return extractor;
-    }
-
-    @Override
-    public void close() throws IOException {
-      mediaDataSource.close();
     }
   }
 }

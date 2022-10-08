@@ -1,6 +1,7 @@
 package chengdu.ws.mediacompress;
 
 import android.annotation.SuppressLint;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.widget.Button;
@@ -38,6 +39,14 @@ public class MainActivity extends AppCompatActivity {
         String attachPathTelegram = this.getFilesDir() + "/convert/telegram.mp4";
         long upperSizeLimit = 100 * 1024 * 1024;
         signalMemoryBTN.setOnClickListener(view -> {
+            if (!org.thoughtcrime.securesms.util.MemoryFileDescriptor.supported()) {
+                infoTV.setText("Signal memory failed: MemoryFileDescriptor unsupported!");
+                return;
+            }
+            if (Build.VERSION.SDK_INT < 26) {
+                infoTV.setText("Signal memory failed: RequiresApi(26)!");
+                return;
+            }
             Integer idSignalMemory = org.thoughtcrime.securesms.util.VideoConvertUtil.startVideoConvert(videoPath, attachPathSignalMemory, upperSizeLimit, true, new org.thoughtcrime.securesms.video.MediaController.ConvertorListener() {
                 @Override
                 public void onConvertProgress(org.thoughtcrime.securesms.video.MediaController.Task task, float progress) {
@@ -59,6 +68,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         signalStreamBTN.setOnClickListener(view -> {
+            if (Build.VERSION.SDK_INT < 26) {
+                infoTV.setText("Signal memory failed: RequiresApi(26)!");
+                return;
+            }
             Integer idSignalStream = org.thoughtcrime.securesms.util.VideoConvertUtil.startVideoConvert(videoPath, attachPathSignalStream, upperSizeLimit, false, new org.thoughtcrime.securesms.video.MediaController.ConvertorListener() {
                 @Override
                 public void onConvertProgress(org.thoughtcrime.securesms.video.MediaController.Task task, float progress) {
