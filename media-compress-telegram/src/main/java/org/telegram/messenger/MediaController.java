@@ -16,7 +16,7 @@ import org.telegram.messenger.video.MediaCodecVideoConvertor;
 import java.io.File;
 import java.util.ArrayList;
 
-import chengdu.ws.telegram.BuildConfig;
+import chengdu.ws.mediacompress.telegram.BuildConfig;
 
 public class MediaController {
     private static final String TAG = MediaController.class.getSimpleName();

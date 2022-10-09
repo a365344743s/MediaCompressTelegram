@@ -12,7 +12,7 @@ import org.telegram.ui.Components.AnimatedFileDrawable;
 
 import java.util.WeakHashMap;
 
-import chengdu.ws.telegram.BuildConfig;
+import chengdu.ws.mediacompress.telegram.BuildConfig;
 
 public class VideoConvertUtil {
     private static final String TAG = Utilities.class.getSimpleName();

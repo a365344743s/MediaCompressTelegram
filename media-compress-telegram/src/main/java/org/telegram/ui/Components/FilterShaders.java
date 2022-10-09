@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-import chengdu.ws.telegram.BuildConfig;
+import chengdu.ws.mediacompress.telegram.BuildConfig;
 
 public class FilterShaders {
     private static final String TAG = FilterShaders.class.getSimpleName();
