@@ -7,8 +7,6 @@ import androidx.annotation.RequiresApi;
 
 import org.thoughtcrime.securesms.video.MediaController;
 
-import chengdu.ws.common.Scheduler;
-
 public class VideoConvertUtil {
     private static Application sApp;
     private static Scheduler sScheduler;

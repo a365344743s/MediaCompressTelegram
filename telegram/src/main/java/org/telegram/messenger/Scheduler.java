@@ -1,4 +1,4 @@
-package chengdu.ws.common;
+package org.telegram.messenger;
 
 public interface Scheduler {
 

@@ -16,7 +16,6 @@ import org.telegram.messenger.video.MediaCodecVideoConvertor;
 import java.io.File;
 import java.util.ArrayList;
 
-import chengdu.ws.common.FileUtils;
 import chengdu.ws.telegram.BuildConfig;
 
 public class MediaController {

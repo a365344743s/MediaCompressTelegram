@@ -16,4 +16,3 @@ rootProject.name = "MediaCompress"
 include ':app'
 include ':telegram'
 include ':signal'
-include ':common'

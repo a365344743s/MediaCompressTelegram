@@ -95,16 +95,16 @@ public class MediaController {
                         }
                         if (transcoder.isTranscodeRequired()) {
                             try (MediaStream ms = transcoder.transcode(percent -> MediaController.this.onProgress(task, percent), () -> task.canceled)) {
-                                if (!chengdu.ws.common.FileUtils.createFileByDeleteOldFile(task.attachPath)) {
+                                if (!FileUtils.createFileByDeleteOldFile(task.attachPath)) {
                                     throw new IOException("createFileByDeleteOldFile failed: " + task.attachPath);
                                 }
-                                if (!chengdu.ws.common.FileUtils.writeFileFromIS(task.attachPath, ms.getStream())) {
+                                if (!FileUtils.writeFileFromIS(task.attachPath, ms.getStream())) {
                                     throw new IOException("WriteFileFromIS failed: " + task.attachPath);
                                 }
                                 MediaController.this.onFinish(task, null);
                             }
                         } else {
-                            chengdu.ws.common.FileUtils.copyFile(task.videoPath, task.attachPath);
+                            FileUtils.copyFile(task.videoPath, task.attachPath);
                             MediaController.this.onFinish(task, null);
                         }
                     } catch (IOException | VideoSourceException | EncodingException e) {
@@ -115,7 +115,7 @@ public class MediaController {
                 } else {
                     try {
                         StreamingTranscoder transcoder = new StreamingTranscoder(new File(task.videoPath), null, task.upperSizeLimit);
-                        if (!chengdu.ws.common.FileUtils.createFileByDeleteOldFile(task.attachPath)) {
+                        if (!FileUtils.createFileByDeleteOldFile(task.attachPath)) {
                             throw new IOException("createFileByDeleteOldFile failed: " + task.attachPath);
                         }
                         if (transcoder.isTranscodeRequired()) {
@@ -124,7 +124,7 @@ public class MediaController {
                                 MediaController.this.onFinish(task, null);
                             }
                         } else {
-                            chengdu.ws.common.FileUtils.copyFile(task.videoPath, task.attachPath);
+                            FileUtils.copyFile(task.videoPath, task.attachPath);
                             MediaController.this.onFinish(task, null);
                         }
                     } catch (IOException | VideoSourceException | EncodingException e) {

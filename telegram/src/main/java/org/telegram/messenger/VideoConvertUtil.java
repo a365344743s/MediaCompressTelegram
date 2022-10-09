@@ -12,7 +12,6 @@ import org.telegram.ui.Components.AnimatedFileDrawable;
 
 import java.util.WeakHashMap;
 
-import chengdu.ws.common.Scheduler;
 import chengdu.ws.telegram.BuildConfig;
 
 public class VideoConvertUtil {
