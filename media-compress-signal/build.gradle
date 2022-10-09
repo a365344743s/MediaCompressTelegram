@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.library'
+    id 'maven-publish'
 }
 
 android {
@@ -8,6 +9,7 @@ android {
     defaultConfig {
         minSdk 21
         targetSdk 32
+        versionName '1.0.0'
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -39,4 +41,23 @@ dependencies {
     implementation 'org.mp4parser:isoparser:1.9.56'
     implementation 'org.mp4parser:streaming:1.9.56'
     implementation 'org.mp4parser:muxer:1.9.56'
+}
+
+// Because the components are created only during the afterEvaluate phase, you must
+// configure your publications using the afterEvaluate() lifecycle method.
+afterEvaluate {
+    publishing {
+        publications {
+            // Creates a Maven publication called "release".
+            release(MavenPublication) {
+                // Applies the component for the release build variant.
+                from components.release
+
+                // You can then customize attributes of the publication as shown below.
+                groupId = 'com.github.a365344743s'
+                artifactId = 'media-compress-signal'
+                version = android.defaultConfig.versionName
+            }
+        }
+    }
 }

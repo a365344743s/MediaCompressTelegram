@@ -36,7 +36,7 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
-    implementation project(':signal')
+    implementation project(':media-compress-signal')
     implementation project(':telegram')
     implementation 'io.reactivex.rxjava3:rxjava:3.1.5'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
