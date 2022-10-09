@@ -1,5 +1,7 @@
+[![](https://jitpack.io/v/a365344743s/MediaCompressSignal.svg)](https://jitpack.io/#a365344743s/MediaCompressSignal)
+
 # MediaCompress
- Android 视频、图片、音频压缩库 from [Telegram](https://github.com/DrKLO/Telegram) And [Signal](https://github.com/signalapp/Signal-Android)
+ Android 视频、图片(暂未实现)、音频(暂未实现)压缩库 from [Telegram](https://github.com/DrKLO/Telegram) And [Signal](https://github.com/signalapp/Signal-Android)
 
 # Telegram Commit
  提交： 6cb1cdf898a8cfe025b907b79d074c4903d4b424 [6cb1cdf]
