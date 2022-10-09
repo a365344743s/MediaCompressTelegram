@@ -1,4 +1,4 @@
-package chengdu.ws.signal;
+package chengdu.ws.mediacompress.telegram;
 
 import org.junit.Test;
 

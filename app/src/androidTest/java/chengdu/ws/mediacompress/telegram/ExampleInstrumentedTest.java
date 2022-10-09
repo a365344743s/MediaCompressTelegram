@@ -1,4 +1,4 @@
-package chengdu.ws.mediacompress;
+package chengdu.ws.mediacompress.telegram;
 
 import android.content.Context;
 
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
     public void useAppContext() {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        assertEquals("chengdu.ws.mediacompress", appContext.getPackageName());
+        assertEquals("chengdu.ws.mediacompress.telegram", appContext.getPackageName());
     }
 }

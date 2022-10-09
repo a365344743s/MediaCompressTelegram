@@ -1,4 +1,4 @@
-package chengdu.ws.mediacompress;
+package chengdu.ws.mediacompress.telegram;
 
 import android.util.Log;
 
@@ -15,17 +15,6 @@ public class Application extends android.app.Application {
         RxJavaPlugins.setErrorHandler(throwable -> {
             Log.e(TAG, throwable.getLocalizedMessage());
             throwable.printStackTrace();
-        });
-        org.thoughtcrime.securesms.util.VideoConvertUtil.init(this, new org.thoughtcrime.securesms.util.Scheduler() {
-            @Override
-            public void runOnComputationThread(Runnable runnable) {
-                Schedulers.computation().scheduleDirect(runnable);
-            }
-
-            @Override
-            public void runOnUIThread(Runnable runnable) {
-                AndroidSchedulers.mainThread().scheduleDirect(runnable);
-            }
         });
         org.telegram.messenger.VideoConvertUtil.init(new org.telegram.messenger.Scheduler() {
             @Override
