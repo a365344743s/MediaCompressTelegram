@@ -3,6 +3,7 @@ package chengdu.ws.mediacompress.telegram;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -10,6 +11,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.blankj.utilcode.constant.PermissionConstants;
+import com.blankj.utilcode.util.FileUtils;
 import com.blankj.utilcode.util.PermissionUtils;
 
 import org.telegram.messenger.MediaController;
@@ -31,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
                 .request();
 
         String videoPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/source.mp4";
-        String attachPathTelegram = this.getFilesDir() + "/convert/telegram.mp4";
+        String attachPathTelegram = this.getFilesDir() + "/convert/" + FileUtils.getFileName(videoPath);
         telegramBTN.setOnClickListener(view -> {
             Integer telegramId = org.telegram.messenger.VideoConvertUtil.startVideoConvert(videoPath, attachPathTelegram, new MediaController.ConvertorListener() {
                 @Override
