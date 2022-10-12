@@ -85,7 +85,6 @@ public class VideoConvertUtil {
         if (originalBitrate == -1) {
             originalBitrate = params[AnimatedFileDrawable.PARAM_NUM_BITRATE];
         }
-        int bitrate = originalBitrate;
         float videoDuration = params[AnimatedFileDrawable.PARAM_NUM_DURATION];
         int videoFramerate = params[AnimatedFileDrawable.PARAM_NUM_FRAMERATE];
 
@@ -128,7 +127,7 @@ public class VideoConvertUtil {
         VideoEditedInfo videoEditedInfo = new VideoEditedInfo();
         videoEditedInfo.startTime = -1;
         videoEditedInfo.endTime = -1;
-        videoEditedInfo.originalBitrate = videoEditedInfo.bitrate = bitrate;
+        videoEditedInfo.originalBitrate = videoEditedInfo.bitrate = originalBitrate;
         videoEditedInfo.originalPath = videoPath;
         videoEditedInfo.framerate = videoFramerate;
         videoEditedInfo.resultWidth = videoEditedInfo.originalWidth = params[AnimatedFileDrawable.PARAM_NUM_WIDTH];
@@ -136,62 +135,28 @@ public class VideoConvertUtil {
         videoEditedInfo.rotationValue = params[AnimatedFileDrawable.PARAM_NUM_ROTATION];
         videoEditedInfo.originalDuration = (long) (videoDuration * 1000);
 
-        int compressionsCount;
-
         float maxSize = Math.max(videoEditedInfo.originalWidth, videoEditedInfo.originalHeight);
+        float outMaxSize;
         if (maxSize > 1280) {
-            compressionsCount = 4;
-        } else if (maxSize > 854) {
-            compressionsCount = 3;
+            outMaxSize = 1280.0f;
+        } else if (maxSize > 960) {
+            outMaxSize = 960.0f;
         } else if (maxSize > 640) {
-            compressionsCount = 2;
+            outMaxSize = 640.0f;
         } else {
-            compressionsCount = 1;
+            outMaxSize = maxSize;
         }
 
-        // WIFI || MOBILE
-        int selectedCompression = Math.round(100 / (100f / compressionsCount));
-        // ROAMING
-//        int selectedCompression = Math.round(50 / (100f / compressionsCount));
-
-        if (selectedCompression > compressionsCount) {
-            selectedCompression = compressionsCount;
-        }
-        boolean needCompress = false;
-        if (selectedCompression != compressionsCount || Math.max(videoEditedInfo.originalWidth, videoEditedInfo.originalHeight) > 1280) {
-            needCompress = true;
-            switch (selectedCompression) {
-                case 1:
-                    maxSize = 432.0f;
-                    break;
-                case 2:
-                    maxSize = 640.0f;
-                    break;
-                case 3:
-                    maxSize = 848.0f;
-                    break;
-                default:
-                    maxSize = 1280.0f;
-                    break;
-            }
-            float scale = videoEditedInfo.originalWidth > videoEditedInfo.originalHeight ? maxSize / videoEditedInfo.originalWidth : maxSize / videoEditedInfo.originalHeight;
+        if (outMaxSize != maxSize) {
+            float scale = videoEditedInfo.originalWidth > videoEditedInfo.originalHeight ? outMaxSize / videoEditedInfo.originalWidth : outMaxSize / videoEditedInfo.originalHeight;
             videoEditedInfo.resultWidth = Math.round(videoEditedInfo.originalWidth * scale / 2) * 2;
             videoEditedInfo.resultHeight = Math.round(videoEditedInfo.originalHeight * scale / 2) * 2;
         }
-        bitrate = makeVideoBitrate(
+        videoEditedInfo.bitrate = makeVideoBitrate(
                 videoEditedInfo.originalHeight, videoEditedInfo.originalWidth,
                 originalBitrate,
                 videoEditedInfo.resultHeight, videoEditedInfo.resultWidth
         );
-
-
-        if (!needCompress) {
-            videoEditedInfo.resultWidth = videoEditedInfo.originalWidth;
-            videoEditedInfo.resultHeight = videoEditedInfo.originalHeight;
-            videoEditedInfo.bitrate = bitrate;
-        } else {
-            videoEditedInfo.bitrate = bitrate;
-        }
 
         return videoEditedInfo;
     }
